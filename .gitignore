@@ -1,0 +1,47 @@
+# Environment variables (contains API keys)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+.kiro/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pipeline output files (keep folder structure with .gitkeep)
+out/*
+!out/.gitkeep
+
+# BABILong data (downloaded separately)
+nokebooks/babilong_data/
+nokebooks/babilong_evals*/
+
+# Large model files
+*.bin
+*.safetensors
+*.pt
+*.onnx
+
+# Temporary files
+*.tmp
+*.log
+tmp.txt

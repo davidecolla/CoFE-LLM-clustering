@@ -1,5 +1,7 @@
 # Beyond Context Windows: Evaluating Structured LLM-Based Clustering of Large-Scale Multilingual Corpora
 
+© Copyright European Union - 2026
+
 This repository contains the code accompanying the paper:
 
 > **Beyond Context Windows: Evaluating Structured LLM-Based Clustering of Large-Scale Multilingual Corpora**  
@@ -18,33 +20,71 @@ As a diagnostic baseline, we also implement an **autonomous LLM-based coding age
 
 ```
 .
-├── paper.tex                   # Research paper (ACL format)
-├── data/                       # Dataset files
+├── paper.tex                       # Research paper (ACL format)
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Template for environment variables
+├── data/                           # Input dataset files
+│   ├── proposals.json                  # Full proposals dataset
 │   ├── proposals_tiny.json             # 8K proposal titles (id, text, language)
 │   ├── proposals_tiny_translation.json # Same with English translations (text_en)
 │   ├── proposals_tiny_full.json        # Extended version of proposals
-│   ├── proposals.json                  # Full proposals dataset
-│   └── plan.json                       # Agent-generated execution plan
-├── nokebooks/                  # Notebooks for the structured LLM pipeline
+│   └── topic_definitions.json          # CoFE category definitions for cluster mapping
+├── out/                            # Pipeline output directory (generated at runtime)
+├── nokebooks/                      # Notebooks for the structured LLM pipeline
 │   ├── 1_create_clusters.ipynb         # Chunking + local clustering + merging
 │   ├── 2_classify_texts.ipynb          # Zero-shot text classification
 │   ├── 3_embed_proposals.ipynb         # Embedding with multiple models
 │   ├── 4_analysis.ipynb                # Quantitative evaluation (silhouette, V-measure, F1)
-│   ├── 5_sampling.ipynb                # Sampling for human/LLM evaluation
+│   ├── 5_sampling.ipynb                # Sampling and LLM-as-judge evaluation
 │   ├── 6.second_level_clustering.ipynb # Micro-category clustering
-│   ├── 7.non_overlapping_clustering.ipynb # Non-overlapping experiments
-│   ├── 8.llm-judge.ipynb              # LLM-as-a-judge evaluation
+│   ├── 7.non_overlapping_clustering.ipynb # Non-overlapping ablation experiment
+│   ├── 8.llm-judge.ipynb              # LLM-as-a-judge evaluation (macro + micro)
 │   └── eval_Llama-3_babilong.ipynb    # BABILong benchmark evaluation
-├── agent/                      # Agentic LLM-based coding baseline
+├── agent/                          # Agentic LLM-based coding baseline
 │   ├── app.py                          # Entry point: builds and runs the agent
 │   ├── src/
+│   │   ├── agents.py                   # LLM agent definitions (OpenAI SDK)
 │   │   ├── graph.py                    # LangGraph state graph (planner → writer → runner → fixer)
-│   │   ├── agents.py                   # Agent definitions (planner, code writer, fixer, assistant)
+│   │   ├── client.py                   # MCP client for ALOHA platform
+│   │   ├── research_engine.py          # Deep research engine (TTD-DR)
 │   │   └── utils.py                    # Utility functions
 │   └── run/                            # Generated pipeline scripts (agent output)
 │       ├── main.py                     # Combined clustering script
 │       └── *.py                        # Step-by-step generated functions
 └── README.md
+```
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configure environment
+
+Copy the environment template and fill in your API credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your values:
+
+```env
+LLM_API_KEY=your-api-key-here
+LLM_BASE_URL=https://your-openai-compatible-endpoint/v1
+PLANNER_MODEL=llama-3.3-70b-instruct
+CODER_MODEL=qwen-coder-2.5-instruct
+```
+
+The notebooks and agent code use the [OpenAI Python SDK](https://github.com/openai/openai-python) with any OpenAI-compatible endpoint. The pipeline requires access to LLaMA 3.3 70B (for clustering and classification) and GPT-OSS-120B (for LLM-as-judge evaluation in notebooks 5 and 8).
+
+### 3. Create output directory
+
+```bash
+mkdir -p out
 ```
 
 ## Methodology
@@ -76,7 +116,7 @@ The dataset consists of ~8,000 proposal titles from the Conference on the Future
 }
 ```
 
-The translation file adds an `"text_en"` field with English translations for non-English proposals.
+The translation file adds a `"text_en"` field with English translations for non-English proposals.
 
 ## Embedding Models
 
@@ -96,40 +136,44 @@ The following multilingual embedding models are used for evaluation and filterin
 | V-measure (micro) | 0.714 | LLM-as-judge ground truth |
 | Cohen's κ (human agreement) | 0.785 | Binarised Likert scale |
 
-## Requirements
-
-### Structured Pipeline (Notebooks)
-
-- Python 3.10+
-- pandas, numpy, scikit-learn
-- sentence-transformers / transformers (for embedding models)
-- torch
-- LASER (for LASER embeddings)
-- Access to an OpenAI-compatible LLM endpoint (LLaMA 3.3 70B)
-
-### Agentic Baseline
-
-- langchain, langgraph
-- langchain-openai
-- pydantic
-- scikit-learn, numpy
-- tqdm
-- Access to an OpenAI-compatible LLM endpoint (LLaMA 3.3 70B, Qwen Coder 2.5)
-
 ## Usage
 
 ### Running the Structured Pipeline
 
-The structured pipeline is implemented across the numbered notebooks in `nokebooks/`. Execute them in order:
+The structured pipeline is implemented across the numbered notebooks in `nokebooks/`. Execute them in order from the `nokebooks/` directory:
 
-1. `1_create_clusters.ipynb` — Performs chunking, local clustering, and merging
+1. `1_create_clusters.ipynb` — Performs chunking, local clustering, merging, and cluster-to-CoFE mapping
 2. `2_classify_texts.ipynb` — Classifies all proposals into the identified clusters
-3. `3_embed_proposals.ipynb` — Computes embeddings for filtering and evaluation
-4. `4_analysis.ipynb` — Computes silhouette, V-measure, and F1 scores
-5. `5_sampling.ipynb` — Samples proposals for qualitative evaluation
-6. `6.second_level_clustering.ipynb` — Runs micro-category clustering
-7. `7.non_overlapping_clustering.ipynb` — Ablation: non-overlapping experiments
-8. `8.llm-judge.ipynb` — LLM-as-a-judge evaluation on sampled proposals
+3. `3_embed_proposals.ipynb` — Computes embeddings using E5, Qwen, BERT, and Qwen-128 models
+4. `4_analysis.ipynb` — Computes silhouette, V-measure, F1, confusion matrices, and filtering
+5. `5_sampling.ipynb` — Samples proposals for qualitative evaluation and runs LLM-as-judge scoring
+6. `6.second_level_clustering.ipynb` — Runs micro-category clustering within each macro-category
+7. `7.non_overlapping_clustering.ipynb` — Ablation: reproduces pipeline without chunk overlap
+8. `8.llm-judge.ipynb` — Full LLM-as-a-judge evaluation on macro- and micro-categories
+9. `eval_Llama-3_babilong.ipynb` — Evaluates LLaMA 3.3 70B on BABILong to determine effective context window
+
+Input data is read from `../data/` and all outputs are written to `../out/`.
+
+### Additional requirements
+
+- **LASER embeddings**: LASER embeddings are used in the evaluation but are not computed within notebook 3. To reproduce LASER results:
+  1. Install LASER following the instructions at [https://github.com/facebookresearch/LASER](https://github.com/facebookresearch/LASER)
+  2. Compute sentence embeddings for all proposal titles using the LASER encoder
+  3. Add an `embedding_laser` field (as a list of floats) to each entry in `out/proposal_embeddings.json`
+  
+  All other embedding types (E5, Qwen, BERT, Qwen-128) are computed directly in notebook 3.
+
+- **BABILong data**: The `eval_Llama-3_babilong.ipynb` notebook requires the BABILong dataset to evaluate effective context window size. To set it up:
+  1. Download the dataset from HuggingFace: [https://huggingface.co/datasets/RMT-team/babilong](https://huggingface.co/datasets/RMT-team/babilong)
+  2. Place the data in `nokebooks/babilong_data/` with the structure `babilong_data/{task}/{length}.json` (e.g., `babilong_data/qa1/0k.json`)
+  
+  Alternatively, you can load it programmatically using the `datasets` library:
+  ```python
+  from datasets import load_dataset
+  data = load_dataset("RMT-team/babilong", "qa1")
+  ```
+
+- **GPU**: Computing embeddings with Qwen3-Embedding-8B (notebook 3) requires a GPU with sufficient memory (~16 GB VRAM).
 
 ### Running the Agentic Baseline
 
@@ -154,4 +198,4 @@ If you use this code or dataset in your research, please cite:
 
 ## License
 
-This repository is provided for research purposes. Please refer to the paper for full details on methodology and evaluation.
+© Copyright European Union - 2026. This repository is provided for research purposes.
