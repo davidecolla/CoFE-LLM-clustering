@@ -189,10 +189,10 @@ The agent will plan, generate, execute, and iteratively fix the clustering pipel
 If you use this code or dataset in your research, please cite:
 
 ```bibtex
-@inproceedings{colla2025beyond,
+@inproceedings{colla2026beyond,
   title={Beyond Context Windows: Evaluating Structured LLM-Based Clustering of Large-Scale Multilingual Corpora},
   author={Colla, Davide and Di Nuovo, Elisa and Stefanovitch, Nicolas and De Longueville, Bertrand and MacMillan, Charles},
-  year={2025}
+  year={2026}
 }
 ```
 
